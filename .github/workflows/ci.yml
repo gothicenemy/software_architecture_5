@@ -1,0 +1,42 @@
+name: CI for Load Balancer
+
+# Тригери для запуску воркфлоу:
+# - push в гілки main або develop
+# - pull request на гілки main або develop
+on:
+  push:
+    branches:
+      - main
+      - develop # Або інша твоя основна гілка розробки
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  # Назва завдання (може бути будь-яка)
+  build_and_test_integration:
+    # Вказуємо, що завдання буде виконуватися на останній версії Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      # Крок 1: Отримання коду з репозиторію
+      # Використовуємо стандартну дію actions/checkout
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # Крок 2: Запуск інтеграційних тестів за допомогою Docker Compose
+      # ВИПРАВЛЕНО: Використовуємо "docker compose" (з пробілом) замість "docker-compose" (з дефісом)
+      - name: Run integration tests with Docker Compose
+        run: |
+          docker compose -f docker-compose.yaml -f docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from test
+
+      # (Опціонально) Крок 3: Якщо потрібні артефакти
+      # Наприклад, якщо тести генерують звіти, їх можна завантажити.
+      # - name: Upload test reports (example)
+      #   if: always() # Завжди виконувати цей крок, навіть якщо попередні невдалі (щоб завантажити звіти про помилки)
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: test-reports
+      #     path: | # Шляхи до файлів звітів всередині контейнера або робочої директорії CI
+      #       ./path/to/reports/
