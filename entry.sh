@@ -1,11 +1,21 @@
-#!/usr/bin/env sh
+#!/bin/sh
+# entry.sh - Generic entrypoint script
 
-bin=$1
-shift
+# Перший аргумент - це назва команди/бінарника для запуску
+COMMAND_TO_RUN=$1
 
-if [ -z "$bin" ]; then
-  echo "binary is not defined"
+# Якщо команда не передана, виводимо помилку та виходимо
+if [ -z "$COMMAND_TO_RUN" ]; then
+  echo "Error: No command specified for entrypoint."
   exit 1
 fi
 
-exec ./"$bin" $@
+# Видаляємо перший аргумент (назву команди) зі списку аргументів,
+# щоб решта передалася як аргументи для самої команди.
+shift
+
+echo "Entrypoint: Attempting to run command '/opt/app/${COMMAND_TO_RUN}' with args: $@"
+
+# Запускаємо відповідний бінарник з рештою аргументів
+# Використовуємо exec, щоб процес замінив собою sh-скрипт
+exec "/opt/app/${COMMAND_TO_RUN}" "$@"

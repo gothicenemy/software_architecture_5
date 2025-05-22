@@ -16,6 +16,7 @@ var (
 	teamName     string
 )
 
+// DbValueResponse - структура для десеріалізації відповіді від сервісу БД
 type DbValueResponse struct {
 	Key   string      `json:"key,omitempty"`
 	Value interface{} `json:"value,omitempty"`
@@ -29,14 +30,14 @@ func init() {
 		dbServiceURL = "http://localhost:8081/db"
 	}
 
-	teamName = os.Getenv("TEAM_NAME") // Тепер має отримати "duo" з docker-compose
+	teamName = os.Getenv("TEAM_NAME")
 	if teamName == "" {
 		log.Println("SERVER_MAIN: Warning: TEAM_NAME environment variable not set. Using default 'duo'")
-		teamName = "duo" // <--- ЗМІНЕНО (значення за замовчуванням, якщо ENV не встановлено)
+		teamName = "duo"
 	}
 
 	currentDate := time.Now().Format("2006-01-02")
-	postURL := fmt.Sprintf("%s/%s", dbServiceURL, teamName) // Тут буде "duo"
+	postURL := fmt.Sprintf("%s/%s", dbServiceURL, teamName)
 	requestBody, err := json.Marshal(map[string]string{"value": currentDate})
 	if err != nil {
 		log.Printf("SERVER_MAIN_INIT: Failed to marshal date for DB: %v", err)
@@ -129,8 +130,18 @@ func someDataHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dataFromDb)
 }
 
+// healthHandler обробляє запити /health
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	// Можна додати тіло відповіді, якщо балансувальник його очікує, наприклад:
+	// w.Header().Set("Content-Type", "application/json")
+	// json.NewEncoder(w).Encode(map[string]string{"status": "OK"})
+	log.Printf("SERVER_HANDLER: GET /health -> 200 OK")
+}
+
 func main() {
 	http.HandleFunc("/api/v1/some-data", someDataHandler)
+	http.HandleFunc("/health", healthHandler) // <--- ДОДАНО МАРШРУТ ДЛЯ HEALTH CHECK
 
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {

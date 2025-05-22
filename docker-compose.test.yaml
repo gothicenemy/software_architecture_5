@@ -1,37 +1,35 @@
-version: '3.8'
+# docker-compose.test.yaml
+
+# Атрибут version застарів, його можна видалити.
 
 services:
   test:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: Dockerfile.test # Переконайтеся, що цей файл існує і налаштований
     networks:
-      - servers # Переконайся, що ця мережа визначена в твоєму основному docker-compose.yaml
+      - app_net # Використовуємо мережу, визначену в основному docker-compose.yaml
     depends_on:
-      # Важливо, щоб сервіси були не просто запущені, а готові приймати з'єднання.
-      # condition: service_healthy краще, якщо для сервісів визначено healthcheck.
-      # Якщо ні, то service_started, і в тесті потрібна буде затримка або механізм retry.
+      db:
+        condition: service_started
       balancer:
-        condition: service_started # Або service_healthy
-      server1:
-        condition: service_started # Або service_healthy
+        condition: service_started
+      server1: # Ці сервіси мають бути визначені в основному docker-compose.yaml
+        condition: service_started
       server2:
-        condition: service_started # Або service_healthy
+        condition: service_started
       server3:
-        condition: service_started # Або service_healthy
+        condition: service_started
     environment:
-      # Ця змінна використовується в тесті для його активації
       INTEGRATION_TEST: "true"
-      # Адреса балансувальника для тестів (внутрішня мережа Docker)
-      # Балансувальник слухає порт 8080 всередині контейнера згідно з balancer.go
       BALANCER_ADDR: "http://balancer:8080"
+      TEAM_NAME_FOR_TEST: "duo"
+      # DB_SERVICE_URL: "http://db:8081/db" # Якщо потрібно тестам
 
-  balancer:
-    # Передаємо прапорець -trace=true, щоб балансувальник додавав заголовок lb-from
-    # Переконайся, що бінарний файл називається 'lb' у твоєму Dockerfile (якщо ENTRYPOINT ["./entry.sh", "lb"])
-    # або зміни 'lb' на правильну назву бінарного файлу балансувальника.
-    # Якщо твій balancer.go компілюється в бінарник з іншою назвою (наприклад, 'main' або 'balancer'),
-    # використовуй цю назву тут. У шаблоні це зазвичай 'lb'.
-    command: ["lb", "-trace=true"]
-    # Інші налаштування для балансувальника (наприклад, порти) успадковуються з основного docker-compose.yaml
-    # і тут їх перевизначати не потрібно, якщо тільки немає специфічної потреби для тестів.
+# Мережа app_net вже має бути визначена в docker-compose.yaml
+# Якщо ні, її потрібно визначити тут:
+# networks:
+#   app_net:
+#     external: true # Якщо вона створена основним файлом
+# Або визначити її повністю, якщо test.yaml запускається ізольовано і має її створити.
+# Для команди docker-compose -f file1 -f file2 ... визначення з file1 будуть доступні.

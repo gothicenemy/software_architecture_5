@@ -1,31 +1,118 @@
-version: '3.8'
+# docker-compose.yaml (об'єднана версія)
 
-services:
-  server: # Або ім'я вашого основного веб-сервісу
-    build:
-      context: .
-      # Вкажіть Dockerfile для вашого cmd/server, наприклад:
-      dockerfile: Dockerfile.server
-    ports:
-      # Порт, на якому слухає ваш cmd/server (зовнішній:внутрішній)
-      - "8080:8080"
-    environment:
-      DB_SERVICE_URL: "http://db:8081/db"
-      TEAM_NAME: "duo"
-    depends_on:
-      - db
+# Атрибут version застарів, його можна видалити.
 
-  db:
-    build:
-      context: .
-      dockerfile: Dockerfile.db
-    ports:
-      - "8081:8081"
-    volumes:
-      - db_data:/app/database_data
-    environment:
-      DB_PORT: "8081"
-      DB_DIR: "/app/database_data"
+networks:
+  app_net:
+    driver: bridge
 
 volumes:
   db_data:
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile # Використовуємо основний Dockerfile
+    command: ["db"] # entry.sh запустить /opt/app/db
+    volumes:
+      - db_data:/opt/app/database_data # Шлях відповідає WORKDIR та mkdir в Dockerfile
+    environment:
+      DB_PORT: "8081"
+      DB_DIR: "/opt/app/database_data" # Шлях, який використовується в cmd/db/main.go
+    networks:
+      - app_net
+    # ports: # Розкоментуйте для прямого доступу до HTTP API БД (дебаг)
+    #   - "8081:8081"
+
+  server1:
+    build:
+      context: .
+      dockerfile: Dockerfile # Використовуємо основний Dockerfile
+    command: ["server"] # entry.sh запустить /opt/app/server
+    environment:
+      SERVER_PORT: "8080" # Внутрішній порт, на якому слухає cmd/server/server.go
+      DB_SERVICE_URL: "http://db:8081/db"
+      TEAM_NAME: "duo_s1" # Можна зробити унікальним для логування або тестів
+    depends_on:
+      - db
+    networks:
+      - app_net
+
+  server2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["server"]
+    environment:
+      SERVER_PORT: "8080"
+      DB_SERVICE_URL: "http://db:8081/db"
+      TEAM_NAME: "duo_s2"
+    depends_on:
+      - db
+    networks:
+      - app_net
+
+  server3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["server"]
+    environment:
+      SERVER_PORT: "8080"
+      DB_SERVICE_URL: "http://db:8081/db"
+      TEAM_NAME: "duo_s3"
+    depends_on:
+      - db
+    networks:
+      - app_net
+
+  balancer:
+    build:
+      context: .
+      dockerfile: Dockerfile # Використовуємо основний Dockerfile
+    # Змінюємо команду: прапорці спочатку, потім список серверів
+    command:
+      - "lb" # Ім'я бінарного файлу, яке запустить entry.sh
+      - "-trace=true" # Ваш прапорець
+      # - "-port=8080" # Якщо потрібно вказати порт для балансувальника (він за замовчуванням 8080)
+      # - "-https=false" # Якщо потрібно
+      # - "-timeout-sec=3" # Якщо потрібно
+      # А тепер список серверів як позиційні аргументи
+      - "server1:8080"
+      - "server2:8080"
+      - "server3:8080"
+    ports:
+      - "8090:8080"
+    depends_on:
+      - server1
+      - server2
+      - server3
+    networks:
+      - app_net
+
+  test:
+    build:
+      context: .
+      # Якщо Dockerfile.test це просто Go тест раннер, він може бути іншим.
+      # Але якщо він теж використовує Go і має запускати тести з вашого проєкту:
+      dockerfile: Dockerfile.test # Припускаємо, що цей файл існує і налаштований для запуску тестів
+    networks:
+      - app_net
+    depends_on:
+      db:
+        condition: service_started
+      balancer:
+        condition: service_started
+      server1:
+        condition: service_started
+      server2:
+        condition: service_started
+      server3:
+        condition: service_started
+    environment:
+      INTEGRATION_TEST: "true"
+      BALANCER_ADDR: "http://balancer:8080" # Балансувальник слухає на порту 8080 всередині мережі
+      TEAM_NAME_FOR_TEST: "duo" # Ім'я команди, яке використовується в тестах
+      # Якщо тест runner-у потрібен доступ до DB_SERVICE_URL:
+      # DB_SERVICE_URL: "http://db:8081/db"

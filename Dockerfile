@@ -1,21 +1,36 @@
-FROM golang:1.24 AS build
+FROM golang:1.24-alpine AS build
+WORKDIR /go/src/app
+COPY go.mod go.sum ./
+RUN go mod tidy # Додано для чистоти залежностей
+RUN go mod download
+RUN go mod verify
 
-WORKDIR /go/src/practice-4
 COPY . .
 
-RUN go test ./...
+# Збираємо всі виконувані файли з директорії cmd
+# Вони будуть розміщені в /go/bin/ з іменами директорій (db, server, lb)
 ENV CGO_ENABLED=0
 RUN go install ./cmd/...
 
 FROM alpine:latest
-WORKDIR /opt/practice-4
 
-COPY entry.sh /opt/practice-4/
-RUN chmod +x /opt/practice-4/entry.sh
+# Встановлюємо робочу директорію для фінального образу
+WORKDIR /opt/app
 
-COPY --from=build /go/bin/* /opt/practice-4/
+# Копіюємо entry.sh та робимо його виконуваним
+COPY entry.sh /opt/app/
+RUN chmod +x /opt/app/entry.sh
 
-RUN ls -l /opt/practice-4
+# Копіюємо всі зібрані бінарні файли з білдера
+COPY --from=build /go/bin/* /opt/app/
 
-ENTRYPOINT ["/opt/practice-4/entry.sh"]
+# Створюємо директорію для даних БД та оголошуємо її як volume
+RUN mkdir -p /opt/app/database_data
+VOLUME /opt/app/database_data
+
+# Визначаємо entrypoint
+ENTRYPOINT ["/opt/app/entry.sh"]
+
+# Команда за замовчуванням (може бути перевизначена в docker-compose.yml)
+# Наприклад, для сервера, якщо він найчастіше використовується
 CMD ["server"]
