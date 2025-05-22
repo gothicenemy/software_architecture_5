@@ -1,33 +1,31 @@
-networks:
-  servers:
+version: '3.8'
 
 services:
-
-  balancer:
-    build: .
-    command: "lb"
-    networks:
-      - servers
+  server: # Або ім'я вашого основного веб-сервісу
+    build:
+      context: .
+      # Вкажіть Dockerfile для вашого cmd/server, наприклад:
+      dockerfile: Dockerfile.server
     ports:
-      - "8090:8080"
-
-  server1:
-    build: .
-    networks:
-      - servers
-    ports:
+      # Порт, на якому слухає ваш cmd/server (зовнішній:внутрішній)
       - "8080:8080"
+    environment:
+      DB_SERVICE_URL: "http://db:8081/db"
+      TEAM_NAME: "duo"
+    depends_on:
+      - db
 
-  server2:
-    build: .
-    networks:
-      - servers
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
     ports:
-      - "8081:8080"
+      - "8081:8081"
+    volumes:
+      - db_data:/app/database_data
+    environment:
+      DB_PORT: "8081"
+      DB_DIR: "/app/database_data"
 
-  server3:
-    build: .
-    networks:
-      - servers
-    ports:
-      - "8082:8080"
+volumes:
+  db_data:

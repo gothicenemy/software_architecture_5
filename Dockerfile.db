@@ -1,0 +1,23 @@
+# Dockerfile.db
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+RUN go mod verify
+
+COPY . .
+
+RUN go build -v -o /app/dbserver github.com/Wandestes/software-architecture_4/cmd/db
+
+FROM alpine:latest
+
+WORKDIR /app
+COPY --from=builder /app/dbserver /app/dbserver
+
+RUN mkdir -p /app/database_data
+VOLUME /app/database_data
+
+EXPOSE 8081
+CMD ["/app/dbserver"]

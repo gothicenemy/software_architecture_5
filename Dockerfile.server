@@ -1,0 +1,22 @@
+# Dockerfile.server
+FROM golang:1.24-alpine AS builder
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod tidy
+RUN go mod download
+RUN go mod verify
+
+COPY . .
+
+RUN go build -v -o /app/mainserver github.com/Wandestes/software-architecture_4/cmd/server
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/mainserver /app/mainserver
+
+EXPOSE 8080
+
+CMD ["/app/mainserver"]
