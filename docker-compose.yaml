@@ -33,7 +33,7 @@ services:
     environment:
       SERVER_PORT: "8080" # Внутрішній порт, на якому слухає cmd/server/server.go
       DB_SERVICE_URL: "http://db:8081/db"
-      TEAM_NAME: "duo_s1" # Можна зробити унікальним для логування або тестів
+      TEAM_NAME: "duo" # Можна зробити унікальним для логування або тестів
     depends_on:
       - db
     networks:
@@ -47,7 +47,7 @@ services:
     environment:
       SERVER_PORT: "8080"
       DB_SERVICE_URL: "http://db:8081/db"
-      TEAM_NAME: "duo_s2"
+      TEAM_NAME: "duo"
     depends_on:
       - db
     networks:
@@ -61,7 +61,7 @@ services:
     environment:
       SERVER_PORT: "8080"
       DB_SERVICE_URL: "http://db:8081/db"
-      TEAM_NAME: "duo_s3"
+      TEAM_NAME: "duo"
     depends_on:
       - db
     networks:
